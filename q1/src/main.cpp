@@ -3,12 +3,10 @@
  * Global Solution 2025 - FIAP
  * Disciplina: DISRUPTIVE ARCHITECTURES: IOT, IOB & GENERATIVE IA
  * 
- * SISTEMA IOT COMPLETO COM 5 DISPOSITIVOS:
+ * SISTEMA IOT COM 3 SENSORES + SIMULAÇÃO DE DADOS:
  * 1. DHT22 - Sensor Temperatura/Umidade
- * 2. Sensor Umidade do Solo
- * 3. Sensor de Precipitação
- * 4. Buzzer - Atuador de Alerta Sonoro
- * 5. LED Status - Atuador Visual
+ * 2. Sensor Umidade do Solo (com simulação)
+ * 3. Sensor de Precipitação (com simulação)
  * 
  * AUTORES: [INSERIR NOMES E RMs DO SEU GRUPO AQUI]
  * DATA: Junho 2025
@@ -21,14 +19,12 @@
 #include <Adafruit_Sensor.h>
 
 //----------------------------------------------------------
-// 🔧 DEFINIÇÕES DE PINOS - 5 DISPOSITIVOS IOT
+// 🔧 DEFINIÇÕES DE PINOS - 3 SENSORES
 
-#define DHT_PIN 12             // Dispositivo 1: DHT22 (Sensor)
+#define DHT_PIN 12             // Sensor 1: DHT22 (Temperatura/Umidade)
 #define DHT_TYPE DHT22
-#define SOIL_MOISTURE_PIN 34   // Dispositivo 2: Sensor Umidade Solo (Sensor)
-#define RAIN_SENSOR_PIN 35     // Dispositivo 3: Sensor Chuva (Sensor)
-#define BUZZER_PIN 25          // Dispositivo 4: Buzzer Alerta (Atuador)
-#define STATUS_LED_PIN 26      // Dispositivo 5: LED Status (Atuador)
+#define SOIL_MOISTURE_PIN 34   // Sensor 2: Umidade do Solo
+#define RAIN_SENSOR_PIN 35     // Sensor 3: Intensidade de Chuva
 #define LED_BUILTIN 2          // LED interno ESP32
 
 //----------------------------------------------------------
@@ -36,22 +32,19 @@
 
 const char* SSID = "Wokwi-GUEST";        // Para Wokwi
 const char* PASSWORD = "";               // Para Wokwi
-// Para WiFi real, use:
-// const char* SSID = "SUA_REDE_WIFI";
-// const char* PASSWORD = "SUA_SENHA_WIFI";
 
 //----------------------------------------------------------
-// 📡 CONFIGURAÇÕES MQTT FIAP (NÃO ALTERAR)
+// 📡 CONFIGURAÇÕES MQTT (MQTT PÚBLICO PARA DEMONSTRAÇÃO)
 
-const char* MQTT_BROKER = "172.208.54.189";
+const char* MQTT_BROKER = "test.mosquitto.org";  // MQTT público
 const int MQTT_PORT = 1883;
-const char* MQTT_USER = "gs2025";
-const char* MQTT_PASSWORD = "q1w2e3r4";
+const char* MQTT_USER = "";                      // Sem usuário
+const char* MQTT_PASSWORD = "";                  // Sem senha
 
 // Tópicos MQTT WaterWise
-const char* TOPIC_SENSORS = "waterwise/sensors/data";
-const char* TOPIC_ALERTS = "waterwise/alerts/flood";
-const char* TOPIC_STATUS = "waterwise/status/system";
+const char* TOPIC_SENSORS = "fiap/waterwise/sensors/data";
+const char* TOPIC_ALERTS = "fiap/waterwise/alerts/flood";
+const char* TOPIC_STATUS = "fiap/waterwise/status/system";
 
 //----------------------------------------------------------
 // 🏷️ IDENTIFICADORES WATERWISE (ALTERE AQUI!)
@@ -59,7 +52,14 @@ const char* TOPIC_STATUS = "waterwise/status/system";
 const char* FARM_ID = "FARM_WaterWise_2025";
 const char* TEAM_NAME = "GRUPO_WATERWISE";    // ALTERAR PARA SEU GRUPO
 const char* LOCATION = "SP_Zona_Rural";
-const char* PROJECT_VERSION = "WaterWise-v2.0-IoT5D";
+const char* PROJECT_VERSION = "WaterWise-v2.0-3Sensors";
+
+//----------------------------------------------------------
+// 🎮 CONFIGURAÇÕES DE SIMULAÇÃO
+
+bool SIMULATION_MODE = true;               // Ativar dados simulados
+unsigned long lastSimulationUpdate = 0;   // Controle de simulação
+int simulationCycle = 0;                   // Ciclo de simulação
 
 //----------------------------------------------------------
 // 📊 OBJETOS GLOBAIS
@@ -69,42 +69,33 @@ PubSubClient mqtt(espClient);
 DHT dht(DHT_PIN, DHT_TYPE);
 JsonDocument sensorData;
 JsonDocument alertData;
-char jsonBuffer[1024];  // Buffer maior para mais dados
+char jsonBuffer[1024];
 
 //----------------------------------------------------------
 // 📊 ESTRUTURAS DE DADOS
 
 struct WaterWiseSensors {
-    // Dispositivo 1: DHT22
+    // Sensor 1: DHT22
     float temperature;
     float airHumidity;
     bool dhtStatus;
     
-    // Dispositivo 2: Solo
+    // Sensor 2: Solo
     int soilMoistureRaw;
     float soilMoisturePercent;
     String soilStatus;
     
-    // Dispositivo 3: Chuva
+    // Sensor 3: Chuva
     int rainLevelRaw;
     float rainIntensity;
     String rainStatus;
-    
-    // Dispositivo 4: Buzzer (Atuador)
-    bool buzzerActive;
-    int alertLevel;
-    
-    // Dispositivo 5: LED Status (Atuador)
-    bool ledState;
-    String ledColor;
-    int blinkPattern;
     
     // Timestamp
     unsigned long timestamp;
 };
 
 struct FloodRiskAnalysis {
-    int riskLevel;              // 0-10
+    int riskLevel;
     bool floodAlert;
     bool droughtAlert;
     bool extremeWeatherAlert;
@@ -122,10 +113,67 @@ WaterWiseSensors sensors;
 const float SOIL_DRY_THRESHOLD = 25.0;
 const float RAIN_HEAVY_THRESHOLD = 70.0;
 const float TEMP_EXTREME_THRESHOLD = 35.0;
-const int CRITICAL_RISK_LEVEL = 7;
 
 //----------------------------------------------------------
-// 🧮 ALGORITMO ANÁLISE DE RISCO WATERWISE (DECLARAÇÃO ANTECIPADA)
+// 🎮 SIMULAÇÃO DE DADOS REALISTAS
+
+void simulateRealisticData() {
+    if (!SIMULATION_MODE) return;
+    
+    unsigned long now = millis();
+    if (now - lastSimulationUpdate < 30000) return; // Atualizar a cada 30s
+    
+    lastSimulationUpdate = now;
+    simulationCycle++;
+    
+    // Ciclo de simulação: Normal → Seca → Chuva → Crítico → Normal
+    switch (simulationCycle % 5) {
+        case 0: // Condições Normais
+            sensors.soilMoisturePercent = random(50, 80);
+            sensors.rainIntensity = random(0, 20);
+            Serial.println("🎭 [SIMULAÇÃO] Condições normais");
+            break;
+            
+        case 1: // Solo Seco
+            sensors.soilMoisturePercent = random(10, 30);
+            sensors.rainIntensity = random(0, 15);
+            Serial.println("🎭 [SIMULAÇÃO] Solo ficando seco");
+            break;
+            
+        case 2: // Chuva Moderada
+            sensors.soilMoisturePercent = random(40, 60);
+            sensors.rainIntensity = random(30, 60);
+            Serial.println("🎭 [SIMULAÇÃO] Chuva moderada");
+            break;
+            
+        case 3: // SITUAÇÃO CRÍTICA!
+            sensors.soilMoisturePercent = random(5, 20);   // Solo muito seco
+            sensors.rainIntensity = random(70, 95);        // Chuva intensa
+            Serial.println("🎭 [SIMULAÇÃO] ⚠️ SITUAÇÃO CRÍTICA - Solo seco + Chuva intensa!");
+            break;
+            
+        case 4: // Recuperação
+            sensors.soilMoisturePercent = random(60, 90);
+            sensors.rainIntensity = random(5, 25);
+            Serial.println("🎭 [SIMULAÇÃO] Situação se normalizando");
+            break;
+    }
+    
+    // Converter para valores raw (simulados)
+    sensors.soilMoistureRaw = map(sensors.soilMoisturePercent, 0, 100, 0, 4095);
+    sensors.rainLevelRaw = map(sensors.rainIntensity, 0, 100, 0, 4095);
+    
+    // Adicionar pequena variação aleatória
+    sensors.soilMoisturePercent += random(-3, 3);
+    sensors.rainIntensity += random(-5, 5);
+    
+    // Garantir limites
+    sensors.soilMoisturePercent = constrain(sensors.soilMoisturePercent, 0, 100);
+    sensors.rainIntensity = constrain(sensors.rainIntensity, 0, 100);
+}
+
+//----------------------------------------------------------
+// 🧮 ALGORITMO ANÁLISE DE RISCO WATERWISE
 
 FloodRiskAnalysis analyzeFloodRisk() {
     FloodRiskAnalysis analysis;
@@ -168,9 +216,9 @@ FloodRiskAnalysis analyzeFloodRisk() {
     }
     
     // Limitar risco máximo
-    analysis.riskLevel = min(analysis.riskLevel, 10);
+    analysis.riskLevel = constrain(analysis.riskLevel, 0, 10);
     
-    // Calcular métricas adicionais
+    // Calcular métricas
     analysis.absorptionCapacity = 100 - sensors.soilMoisturePercent;
     analysis.runoffRisk = max(0.0f, sensors.rainIntensity - (sensors.soilMoisturePercent * 0.8f));
     
@@ -183,9 +231,9 @@ FloodRiskAnalysis analyzeFloodRisk() {
         analysis.recommendation = "Intensificar monitoramento";
     } else if (analysis.riskLevel <= 6) {
         analysis.riskDescription = "Alto - Preparação";
-        analysis.recommendation = "Preparar drenagem";
+        analysis.recommendation = "Preparar sistemas de drenagem";
     } else if (analysis.riskLevel <= 8) {
-        analysis.riskDescription = "Muito Alto - Ação";
+        analysis.riskDescription = "Muito Alto - Ação imediata";
         analysis.recommendation = "Alertar autoridades";
     } else {
         analysis.riskDescription = "CRÍTICO - EMERGÊNCIA";
@@ -198,62 +246,17 @@ FloodRiskAnalysis analyzeFloodRisk() {
 }
 
 //----------------------------------------------------------
-// 💡 CONTROLE DO LED STATUS (DISPOSITIVO 5)
-
-void updateStatusLED(FloodRiskAnalysis risk) {
-    if (risk.riskLevel >= 8) {
-        // CRÍTICO - Vermelho piscando rápido
-        sensors.ledColor = "red";
-        sensors.blinkPattern = 1; // Rápido
-        sensors.ledState = true;
-        for (int i = 0; i < 6; i++) {
-            digitalWrite(STATUS_LED_PIN, HIGH);
-            delay(150);
-            digitalWrite(STATUS_LED_PIN, LOW);
-            delay(150);
-        }
-    } else if (risk.riskLevel >= 6) {
-        // ALTO - Amarelo piscando médio
-        sensors.ledColor = "yellow";
-        sensors.blinkPattern = 2; // Médio
-        sensors.ledState = true;
-        for (int i = 0; i < 3; i++) {
-            digitalWrite(STATUS_LED_PIN, HIGH);
-            delay(400);
-            digitalWrite(STATUS_LED_PIN, LOW);
-            delay(400);
-        }
-    } else if (risk.riskLevel >= 3) {
-        // MODERADO - Verde piscando lento
-        sensors.ledColor = "green";
-        sensors.blinkPattern = 3; // Lento
-        sensors.ledState = true;
-        digitalWrite(STATUS_LED_PIN, HIGH);
-        delay(800);
-        digitalWrite(STATUS_LED_PIN, LOW);
-        delay(200);
-    } else {
-        // NORMAL - Verde fixo
-        sensors.ledColor = "green";
-        sensors.blinkPattern = 0; // Fixo
-        sensors.ledState = true;
-        digitalWrite(STATUS_LED_PIN, HIGH);
-        delay(100);
-        digitalWrite(STATUS_LED_PIN, LOW);
-    }
-}
-
-//----------------------------------------------------------
 // 🌐 INICIALIZAÇÃO WIFI
 
 void initWiFi() {
     Serial.println("\n==================================================");
-    Serial.println("🌊 WATERWISE - SISTEMA IOT 5 DISPOSITIVOS");
+    Serial.println("🌊 WATERWISE - SISTEMA IOT 3 SENSORES v2.0");
     Serial.println("Global Solution 2025 - FIAP");
     Serial.println("==================================================");
     Serial.printf("Farm ID: %s\n", FARM_ID);
     Serial.printf("Equipe: %s\n", TEAM_NAME);
     Serial.printf("Versão: %s\n", PROJECT_VERSION);
+    Serial.printf("Simulação: %s\n", SIMULATION_MODE ? "ATIVA" : "Desabilitada");
     Serial.println("==================================================");
     
     WiFi.begin(SSID, PASSWORD);
@@ -275,52 +278,50 @@ void initWiFi() {
 void initMQTT() {
     mqtt.setServer(MQTT_BROKER, MQTT_PORT);
     
-    while (!mqtt.connected()) {
-        Serial.println("Conectando MQTT Broker FIAP...");
+    Serial.printf("Conectando MQTT: %s:%d\n", MQTT_BROKER, MQTT_PORT);
+    
+    // Tentar conectar uma vez (não ficar em loop)
+    if (mqtt.connect(FARM_ID, MQTT_USER, MQTT_PASSWORD)) {
+        Serial.println("✅ MQTT Conectado!");
         
-        if (mqtt.connect(FARM_ID, MQTT_USER, MQTT_PASSWORD)) {
-            Serial.println("✅ MQTT Conectado!");
-            
-            // Publicar status online
-            JsonDocument statusDoc;
-            statusDoc["system"] = "WaterWise";
-            statusDoc["farmId"] = FARM_ID;
-            statusDoc["status"] = "online";
-            statusDoc["devices"] = 5;
-            statusDoc["timestamp"] = millis();
-            
-            char statusBuffer[256];
-            serializeJson(statusDoc, statusBuffer);
-            mqtt.publish(TOPIC_STATUS, statusBuffer);
-            
-        } else {
-            Serial.printf("❌ Falha MQTT: %d\n", mqtt.state());
-            delay(2000);
-        }
+        // Publicar status online
+        String statusMsg = "{\"system\":\"WaterWise\",\"status\":\"online\",\"sensors\":3}";
+        mqtt.publish(TOPIC_STATUS, statusMsg.c_str());
+        
+    } else {
+        Serial.printf("⚠️ MQTT não conectou (código: %d) - Modo simulação apenas\n", mqtt.state());
     }
 }
 
 //----------------------------------------------------------
-// 📊 LEITURA DOS 5 DISPOSITIVOS IOT
+// 📊 LEITURA DOS 3 SENSORES
 
-void readAllDevices() {
+void readAllSensors() {
     sensors.timestamp = millis();
     
-    // 🌡️ DISPOSITIVO 1: DHT22 (Sensor)
+    // 🌡️ SENSOR 1: DHT22 (Temperatura e Umidade do Ar)
     sensors.temperature = dht.readTemperature();
     sensors.airHumidity = dht.readHumidity();
     sensors.dhtStatus = !isnan(sensors.temperature) && !isnan(sensors.airHumidity);
     
     if (!sensors.dhtStatus) {
-        sensors.temperature = 25.0;  // Valor padrão
-        sensors.airHumidity = 60.0;  // Valor padrão
-        Serial.println("⚠️  DHT22 com erro - usando valores padrão");
+        sensors.temperature = 25.0 + random(-3, 3);  // Valor simulado
+        sensors.airHumidity = 60.0 + random(-10, 10); // Valor simulado
     }
     
-    // 🌱 DISPOSITIVO 2: Sensor Umidade Solo (Sensor)
-    sensors.soilMoistureRaw = analogRead(SOIL_MOISTURE_PIN);
-    sensors.soilMoisturePercent = map(sensors.soilMoistureRaw, 0, 4095, 0, 100);
+    // 🌱 SENSOR 2: Umidade do Solo
+    int soilRaw = analogRead(SOIL_MOISTURE_PIN);
     
+    if (SIMULATION_MODE) {
+        // Usar dados simulados se em modo simulação
+        simulateRealisticData();
+    } else {
+        // Usar dados reais dos potenciômetros
+        sensors.soilMoistureRaw = soilRaw;
+        sensors.soilMoisturePercent = map(soilRaw, 0, 4095, 0, 100);
+    }
+    
+    // Definir status do solo
     if (sensors.soilMoisturePercent < 20) {
         sensors.soilStatus = "Crítico";
     } else if (sensors.soilMoisturePercent < 40) {
@@ -331,10 +332,16 @@ void readAllDevices() {
         sensors.soilStatus = "Saturado";
     }
     
-    // 🌧️ DISPOSITIVO 3: Sensor de Chuva (Sensor)
-    sensors.rainLevelRaw = analogRead(RAIN_SENSOR_PIN);
-    sensors.rainIntensity = map(sensors.rainLevelRaw, 0, 4095, 0, 100);
+    // 🌧️ SENSOR 3: Intensidade de Chuva
+    int rainRaw = analogRead(RAIN_SENSOR_PIN);
     
+    if (!SIMULATION_MODE) {
+        // Usar dados reais dos potenciômetros
+        sensors.rainLevelRaw = rainRaw;
+        sensors.rainIntensity = map(rainRaw, 0, 4095, 0, 100);
+    }
+    
+    // Definir status da chuva
     if (sensors.rainIntensity < 10) {
         sensors.rainStatus = "Sem chuva";
     } else if (sensors.rainIntensity < 30) {
@@ -345,45 +352,33 @@ void readAllDevices() {
         sensors.rainStatus = "Intensa";
     }
     
-    // 🔊 DISPOSITIVO 4: Buzzer (Atuador) - Controle baseado em risco
-    FloodRiskAnalysis risk = analyzeFloodRisk();
-    sensors.buzzerActive = (risk.riskLevel >= CRITICAL_RISK_LEVEL);
-    sensors.alertLevel = risk.riskLevel;
-    
-    // Ativar buzzer se necessário
-    if (sensors.buzzerActive) {
-        // Padrão de bip baseado no nível de risco
-        int beepCount = min(risk.riskLevel, 5);
-        for (int i = 0; i < beepCount; i++) {
-            digitalWrite(BUZZER_PIN, HIGH);
-            delay(200);
-            digitalWrite(BUZZER_PIN, LOW);
-            delay(200);
-        }
-    }
-    
-    // 💡 DISPOSITIVO 5: LED Status (Atuador) - Visual do estado do sistema
-    updateStatusLED(risk);
-    
     // 🖥️ Debug das leituras
-    Serial.println("\n📊 === LEITURA 5 DISPOSITIVOS WATERWISE ===");
+    Serial.println("\n📊 === LEITURA 3 SENSORES WATERWISE ===");
     Serial.printf("🌡️  DHT22: %.1f°C, %.1f%% - %s\n", 
                   sensors.temperature, sensors.airHumidity, 
-                  sensors.dhtStatus ? "OK" : "ERRO");
+                  sensors.dhtStatus ? "OK" : "SIMULADO");
     Serial.printf("🌱 Solo: %d raw (%.1f%%) - %s\n", 
                   sensors.soilMoistureRaw, sensors.soilMoisturePercent, 
                   sensors.soilStatus.c_str());
     Serial.printf("🌧️  Chuva: %d raw (%.1f%%) - %s\n", 
                   sensors.rainLevelRaw, sensors.rainIntensity, 
                   sensors.rainStatus.c_str());
-    Serial.printf("🔊 Buzzer: %s (Nível %d)\n", 
-                  sensors.buzzerActive ? "ATIVO" : "Inativo", sensors.alertLevel);
-    Serial.printf("💡 LED: %s (%s)\n", 
-                  sensors.ledState ? "ON" : "OFF", sensors.ledColor.c_str());
+    
+    // Análise de risco
+    FloodRiskAnalysis risk = analyzeFloodRisk();
+    Serial.printf("🧮 Risco: %d/10 - %s\n", 
+                  risk.riskLevel, risk.riskDescription.c_str());
+    
+    if (risk.floodAlert) {
+        Serial.println("🚨 ⚠️ ALERTA DE ENCHENTE ATIVO! ⚠️");
+    }
+    if (risk.droughtAlert) {
+        Serial.println("🚨 ⚠️ ALERTA DE SECA ATIVO! ⚠️");
+    }
 }
 
 //----------------------------------------------------------
-// 📡 PUBLICAÇÃO MQTT - DADOS DOS 5 DISPOSITIVOS
+// 📡 PUBLICAÇÃO MQTT - DADOS DOS 3 SENSORES
 
 void publishSensorData() {
     sensorData.clear();
@@ -396,54 +391,37 @@ void publishSensorData() {
     sensorData["timestamp"] = sensors.timestamp;
     sensorData["ip"] = WiFi.localIP().toString();
     sensorData["mac"] = WiFi.macAddress();
+    sensorData["simulation"] = SIMULATION_MODE;
     
-    // DISPOSITIVOS IOT (5 dispositivos conforme exigido)
-    JsonObject devices = sensorData["devices"].to<JsonObject>();
+    // SENSORES IOT (3 sensores)
+    JsonObject sensorsObj = sensorData["sensors"].to<JsonObject>();
     
-    // DISPOSITIVO 1: DHT22 (Sensor)
-    JsonObject dht22 = devices["dht22"].to<JsonObject>();
+    // SENSOR 1: DHT22
+    JsonObject dht22 = sensorsObj["dht22"].to<JsonObject>();
     dht22["type"] = "sensor";
     dht22["description"] = "Temperatura e Umidade Ambiente";
-    dht22["temperature"] = sensors.temperature;
-    dht22["humidity"] = sensors.airHumidity;
-    dht22["status"] = sensors.dhtStatus ? "active" : "error";
+    dht22["temperature"] = round(sensors.temperature * 10) / 10.0;
+    dht22["humidity"] = round(sensors.airHumidity * 10) / 10.0;
+    dht22["status"] = sensors.dhtStatus ? "active" : "simulated";
     dht22["pin"] = DHT_PIN;
     
-    // DISPOSITIVO 2: Sensor Umidade Solo (Sensor)
-    JsonObject soilSensor = devices["soilSensor"].to<JsonObject>();
+    // SENSOR 2: Solo
+    JsonObject soilSensor = sensorsObj["soilSensor"].to<JsonObject>();
     soilSensor["type"] = "sensor";
     soilSensor["description"] = "Umidade do Solo";
     soilSensor["moisture_raw"] = sensors.soilMoistureRaw;
-    soilSensor["moisture_percent"] = sensors.soilMoisturePercent;
+    soilSensor["moisture_percent"] = round(sensors.soilMoisturePercent * 10) / 10.0;
     soilSensor["status"] = sensors.soilStatus;
     soilSensor["pin"] = SOIL_MOISTURE_PIN;
     
-    // DISPOSITIVO 3: Sensor Chuva (Sensor)
-    JsonObject rainSensor = devices["rainSensor"].to<JsonObject>();
+    // SENSOR 3: Chuva
+    JsonObject rainSensor = sensorsObj["rainSensor"].to<JsonObject>();
     rainSensor["type"] = "sensor";
     rainSensor["description"] = "Intensidade de Precipitação";
     rainSensor["rain_raw"] = sensors.rainLevelRaw;
-    rainSensor["intensity_percent"] = sensors.rainIntensity;
+    rainSensor["intensity_percent"] = round(sensors.rainIntensity * 10) / 10.0;
     rainSensor["status"] = sensors.rainStatus;
     rainSensor["pin"] = RAIN_SENSOR_PIN;
-    
-    // DISPOSITIVO 4: Buzzer (Atuador)
-    JsonObject buzzer = devices["buzzer"].to<JsonObject>();
-    buzzer["type"] = "actuator";
-    buzzer["description"] = "Alerta Sonoro de Emergência";
-    buzzer["active"] = sensors.buzzerActive;
-    buzzer["alert_level"] = sensors.alertLevel;
-    buzzer["trigger_threshold"] = CRITICAL_RISK_LEVEL;
-    buzzer["pin"] = BUZZER_PIN;
-    
-    // DISPOSITIVO 5: LED Status (Atuador)
-    JsonObject statusLED = devices["statusLED"].to<JsonObject>();
-    statusLED["type"] = "actuator";
-    statusLED["description"] = "Indicador Visual de Status";
-    statusLED["state"] = sensors.ledState;
-    statusLED["color"] = sensors.ledColor;
-    statusLED["blink_pattern"] = sensors.blinkPattern;
-    statusLED["pin"] = STATUS_LED_PIN;
     
     // ANÁLISE DE RISCO WATERWISE
     FloodRiskAnalysis risk = analyzeFloodRisk();
@@ -455,27 +433,26 @@ void publishSensorData() {
     analysis["flood_alert"] = risk.floodAlert;
     analysis["drought_alert"] = risk.droughtAlert;
     analysis["extreme_weather_alert"] = risk.extremeWeatherAlert;
-    analysis["absorption_capacity"] = risk.absorptionCapacity;
-    analysis["runoff_risk"] = risk.runoffRisk;
-    
-    // PROTOCOLO DE COMUNICAÇÃO
-    JsonObject protocol = sensorData["protocol"].to<JsonObject>();
-    protocol["mqtt_topic"] = TOPIC_SENSORS;
-    protocol["format"] = "JSON";
-    protocol["broker"] = MQTT_BROKER;
-    protocol["qos"] = 0;
+    analysis["absorption_capacity"] = round(risk.absorptionCapacity * 10) / 10.0;
+    analysis["runoff_risk"] = round(risk.runoffRisk * 10) / 10.0;
     
     // SERIALIZAR E PUBLICAR
     serializeJson(sensorData, jsonBuffer);
     
-    if (mqtt.publish(TOPIC_SENSORS, jsonBuffer)) {
-        Serial.println("📡 ✅ Dados 5 dispositivos publicados no MQTT");
-    } else {
-        Serial.println("📡 ❌ Falha na publicação MQTT");
+    // Tentar publicar MQTT
+    bool mqttSuccess = false;
+    if (mqtt.connected()) {
+        mqttSuccess = mqtt.publish(TOPIC_SENSORS, jsonBuffer);
     }
     
-    // Mostrar JSON compacto
-    Serial.println("📄 JSON Enviado (5 Dispositivos IoT):");
+    if (mqttSuccess) {
+        Serial.println("📡 ✅ Dados dos 3 sensores publicados no MQTT");
+    } else {
+        Serial.println("📡 ⚠️ MQTT offline - Dados disponíveis localmente");
+    }
+    
+    // Mostrar JSON sempre (para demonstração)
+    Serial.println("📄 JSON Gerado (3 Sensores):");
     Serial.println(jsonBuffer);
 }
 
@@ -486,55 +463,17 @@ void publishAlerts() {
     FloodRiskAnalysis risk = analyzeFloodRisk();
     
     if (!risk.floodAlert && !risk.droughtAlert && !risk.extremeWeatherAlert) {
-        return; // Só publica se houver algum alerta
+        return; // Só publica se houver alerta
     }
     
-    alertData.clear();
+    String alertMsg = "{\"alert\":\"" + risk.riskDescription + "\",\"level\":" + String(risk.riskLevel) + "}";
     
-    alertData["alertSystem"] = "WaterWise-Alert-v2.0";
-    alertData["farmId"] = FARM_ID;
-    alertData["location"] = LOCATION;
-    alertData["timestamp"] = millis();
-    alertData["severity"] = risk.riskLevel >= 8 ? "CRITICAL" : "HIGH";
-    
-    // Tipos de alerta
-    JsonArray alerts = alertData["active_alerts"].to<JsonArray>();
-    if (risk.floodAlert) {
-        JsonObject floodAlert = alerts.add<JsonObject>();
-        floodAlert["type"] = "FLOOD_WARNING";
-        floodAlert["message"] = "Risco de enchente detectado";
-        floodAlert["trigger"] = "Solo seco + Chuva intensa";
-    }
-    if (risk.droughtAlert) {
-        JsonObject droughtAlert = alerts.add<JsonObject>();
-        droughtAlert["type"] = "DROUGHT_WARNING";
-        droughtAlert["message"] = "Solo criticamente seco";
-        droughtAlert["trigger"] = "Umidade solo < 15%";
-    }
-    if (risk.extremeWeatherAlert) {
-        JsonObject weatherAlert = alerts.add<JsonObject>();
-        weatherAlert["type"] = "EXTREME_WEATHER";
-        weatherAlert["message"] = "Temperatura extrema detectada";
-        weatherAlert["trigger"] = "Temperatura > 35°C";
-    }
-    
-    // Dados críticos dos sensores
-    JsonObject criticalData = alertData["sensor_data"].to<JsonObject>();
-    criticalData["soil_moisture"] = sensors.soilMoisturePercent;
-    criticalData["rain_intensity"] = sensors.rainIntensity;
-    criticalData["temperature"] = sensors.temperature;
-    criticalData["risk_level"] = risk.riskLevel;
-    
-    // Ações recomendadas
-    alertData["recommendation"] = risk.recommendation;
-    alertData["emergency_contact"] = "Defesa Civil: 199";
-    
-    serializeJson(alertData, jsonBuffer);
-    
-    if (mqtt.publish(TOPIC_ALERTS, jsonBuffer)) {
-        Serial.println("🚨 ✅ ALERTA ENVIADO!");
+    if (mqtt.connected()) {
+        if (mqtt.publish(TOPIC_ALERTS, alertMsg.c_str())) {
+            Serial.println("🚨 ✅ ALERTA ENVIADO VIA MQTT!");
+        }
     } else {
-        Serial.println("🚨 ❌ Falha no envio do alerta");
+        Serial.println("🚨 ⚠️ ALERTA GERADO (MQTT offline): " + risk.riskDescription);
     }
 }
 
@@ -544,18 +483,18 @@ void publishAlerts() {
 void waterWiseStatusFeedback() {
     FloodRiskAnalysis risk = analyzeFloodRisk();
     
-    // LED interno como feedback adicional
-    if (risk.riskLevel >= 8) {
+    // LED interno indica nível de risco
+    if (risk.riskLevel >= 7) {
         // CRÍTICO - Piscadas rápidas
-        for (int i = 0; i < 8; i++) {
+        for (int i = 0; i < 6; i++) {
             digitalWrite(LED_BUILTIN, HIGH);
             delay(100);
             digitalWrite(LED_BUILTIN, LOW);
             delay(100);
         }
-    } else if (risk.riskLevel >= 6) {
-        // ALTO - Piscadas médias
-        for (int i = 0; i < 4; i++) {
+    } else if (risk.riskLevel >= 4) {
+        // MODERADO - Piscadas médias
+        for (int i = 0; i < 3; i++) {
             digitalWrite(LED_BUILTIN, HIGH);
             delay(300);
             digitalWrite(LED_BUILTIN, LOW);
@@ -576,14 +515,12 @@ void setup() {
     Serial.begin(115200);
     delay(2000);
     
-    // Configurar pinos dos 5 dispositivos
-    pinMode(LED_BUILTIN, OUTPUT);        // LED interno ESP32
-    pinMode(BUZZER_PIN, OUTPUT);         // Dispositivo 4: Buzzer
-    pinMode(STATUS_LED_PIN, OUTPUT);     // Dispositivo 5: LED Status
-    pinMode(SOIL_MOISTURE_PIN, INPUT);   // Dispositivo 2: Solo
-    pinMode(RAIN_SENSOR_PIN, INPUT);     // Dispositivo 3: Chuva
+    // Configurar pinos
+    pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(SOIL_MOISTURE_PIN, INPUT);
+    pinMode(RAIN_SENSOR_PIN, INPUT);
     
-    // Inicializar DHT22 (Dispositivo 1)
+    // Inicializar DHT22
     dht.begin();
     
     // Conectividade
@@ -591,11 +528,12 @@ void setup() {
     initMQTT();
     
     // Primeira leitura
-    Serial.println("📡 Primeira leitura dos 5 dispositivos...");
-    readAllDevices();
+    Serial.println("📡 Primeira leitura dos 3 sensores...");
+    readAllSensors();
     
     Serial.println("\n🚀 === WATERWISE SISTEMA IOT ONLINE ===");
-    Serial.println("5 Dispositivos: DHT22 + Solo + Chuva + Buzzer + LED");
+    Serial.println("3 Sensores: DHT22 + Solo + Chuva");
+    Serial.println("Simulação: Dados realistas ativada");
     Serial.println("Protocolos: MQTT + JSON + HTTP");
     Serial.println("Intervalo: 15 segundos");
     Serial.println("==================================================\n");
@@ -605,36 +543,36 @@ void setup() {
 // 🔄 LOOP PRINCIPAL
 
 void loop() {
-    // Manter conexões
-    if (!mqtt.connected()) {
-        initMQTT();
+    // Manter conexão MQTT (sem bloquear)
+    if (mqtt.connected()) {
+        mqtt.loop();
     }
-    mqtt.loop();
     
-    // Leitura completa dos 5 dispositivos
-    readAllDevices();
+    // Leitura dos sensores
+    readAllSensors();
     
-    // Publicar dados via MQTT
+    // Publicar dados
     publishSensorData();
     
-    // Verificar e enviar alertas
+    // Verificar alertas
     publishAlerts();
     
-    // Feedback visual adicional
+    // Feedback LED
     waterWiseStatusFeedback();
     
     // Status resumido
     FloodRiskAnalysis risk = analyzeFloodRisk();
-    Serial.printf("\n⏱️  WaterWise | 5 Dispositivos | Risco: %d/10 | Próxima: 15s\n", 
-                  risk.riskLevel);
+    Serial.printf("\n⏱️  WaterWise | 3 Sensores | Risco: %d/10 | Ciclo: %d | Próxima: 15s\n", 
+                  risk.riskLevel, simulationCycle % 5);
     Serial.printf("📊 Solo: %.1f%% | Chuva: %.1f%% | Temp: %.1f°C\n",
                   sensors.soilMoisturePercent, sensors.rainIntensity, sensors.temperature);
-    Serial.printf("🔊 Buzzer: %s | 💡 LED: %s (%s)\n",
-                  sensors.buzzerActive ? "ON" : "OFF",
-                  sensors.ledState ? "ON" : "OFF",
-                  sensors.ledColor.c_str());
+    
+    if (SIMULATION_MODE) {
+        Serial.println("🎭 Modo Simulação: Dados variando automaticamente");
+    }
+    
     Serial.println("--------------------------------------------------");
     
-    // Aguardar próxima leitura (15 segundos)
+    // Aguardar próxima leitura
     delay(15000);
 }

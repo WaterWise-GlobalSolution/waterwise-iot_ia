@@ -3,55 +3,54 @@
   "author": "WaterWise Team - Global Solution 2025",
   "editor": "wokwi",
   "parts": [
-    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 76.8, "left": 100.84, "attrs": {} },
-    { "type": "wokwi-dht22", "id": "dht_sensor", "top": -57.3, "left": -101.4, "attrs": {} },
+    { 
+      "type": "board-esp32-devkit-c-v4", 
+      "id": "esp", 
+      "top": 76.8, 
+      "left": 100.84, 
+      "attrs": {},
+      "label": "ESP32 - WaterWise Controller"
+    },
+    { 
+      "type": "wokwi-dht22", 
+      "id": "dht_sensor", 
+      "top": -57.3, 
+      "left": -101.4, 
+      "attrs": {},
+      "label": "Sensor 1: DHT22 (Temp/Umidade Ar)"
+    },
     {
       "type": "wokwi-slide-potentiometer",
       "id": "soil_moisture",
       "top": -49.3,
       "left": -19.4,
-      "attrs": {}
+      "attrs": {},
+      "label": "Sensor 2: Umidade Solo"
     },
     {
       "type": "wokwi-slide-potentiometer",
       "id": "rain_sensor",
       "top": -49.3,
       "left": 50.6,
-      "attrs": {}
-    },
-    { "type": "wokwi-buzzer", "id": "alert_buzzer", "top": 223.2, "left": 280.2, "attrs": {} },
-    {
-      "type": "wokwi-led",
-      "id": "status_led",
-      "top": 44.4,
-      "left": 282.2,
-      "attrs": { "color": "green" }
-    },
-    {
-      "type": "wokwi-resistor",
-      "id": "led_resistor",
-      "top": 119.15,
-      "left": 364.8,
-      "attrs": { "value": "220" }
+      "attrs": {},
+      "label": "Sensor 3: Precipitação"
     }
   ],
   "connections": [
     [ "esp:TX", "$serialMonitor:RX", "", [] ],
     [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    
     [ "dht_sensor:VCC", "esp:3V3", "red", [ "v0" ] ],
     [ "esp:GND.1", "dht_sensor:GND", "black", [ "h0" ] ],
     [ "esp:12", "dht_sensor:SDA", "green", [ "v0", "h-95.85" ] ],
+    
     [ "soil_moisture:VCC", "esp:3V3", "red", [ "v0" ] ],
     [ "soil_moisture:GND", "esp:GND.1", "black", [ "v0" ] ],
     [ "esp:34", "soil_moisture:SIG", "gold", [ "h0" ] ],
+    
     [ "rain_sensor:VCC", "esp:3V3", "red", [ "v0" ] ],
     [ "rain_sensor:GND", "esp:GND.1", "black", [ "v0" ] ],
-    [ "esp:35", "rain_sensor:SIG", "blue", [ "h0" ] ],
-    [ "alert_buzzer:1", "esp:25", "orange", [ "h0" ] ],
-    [ "alert_buzzer:2", "esp:GND.2", "black", [ "h0" ] ],
-    [ "esp:26", "led_resistor:1", "green", [ "h0" ] ],
-    [ "led_resistor:2", "status_led:A", "green", [ "h0" ] ],
-    [ "status_led:C", "esp:GND.2", "black", [ "h0" ] ]
+    [ "esp:35", "rain_sensor:SIG", "blue", [ "h0" ] ]
   ],
   "dependencies": {}
 }
