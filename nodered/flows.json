@@ -1,0 +1,40 @@
+[
+    {
+        "id": "waterwise_main",
+        "type": "tab",
+        "label": "WaterWise Dashboard",
+        "disabled": false,
+        "info": "Sistema de monitoramento de enchentes"
+    },
+    {
+        "id": "mqtt_in_sensors",
+        "type": "mqtt in",
+        "z": "waterwise_main",
+        "name": "Sensores WaterWise",
+        "topic": "waterwise/sensors/data",
+        "qos": "0",
+        "broker": "mqtt_broker",
+        "x": 140,
+        "y": 100
+    },
+    {
+        "id": "json_parse",
+        "type": "json",
+        "z": "waterwise_main",
+        "name": "Parse JSON",
+        "x": 340,
+        "y": 100
+    },
+    {
+        "id": "dashboard_gauge_soil",
+        "type": "ui_gauge",
+        "z": "waterwise_main",
+        "name": "Umidade Solo",
+        "group": "sensors_group",
+        "x": 540,
+        "y": 80,
+        "min": 0,
+        "max": 100,
+        "colors": ["#ca3838","#e6e600","#62a0ea"]
+    }
+]

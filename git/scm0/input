@@ -7,3 +7,6 @@ Adiciona estrutura inicial do projeto ESP32 MQTT para monitoramento de temperatu
 - Incluído arquivos de simulação Wokwi: diagram.json e wokwi.toml.
 - Implementada funcionalidade principal em src/main.cpp para leitura do sensor DHT22 e publicação via MQTT.
 - Configurado recomendações de extensões VS Code em .vscode/extensions.json. 
+
+
+
