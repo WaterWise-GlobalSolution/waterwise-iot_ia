@@ -3,10 +3,12 @@
  * Global Solution 2025 - FIAP
  * Disciplina: DISRUPTIVE ARCHITECTURES: IOT, IOB & GENERATIVE IA
  * 
- * SISTEMA IOT COM 3 SENSORES + SIMULAÇÃO DE DADOS:
+ * SISTEMA IOT COM 3 SENSORES:
  * 1. DHT22 - Sensor Temperatura/Umidade
- * 2. Sensor Umidade do Solo (com simulação)
- * 3. Sensor de Precipitação (com simulação)
+ * 2. Sensor Umidade do Solo (simulado com potenciômetro)
+ * 3. Sensor de Precipitação (simulado com potenciômetro)
+ * 
+ * ALGORITMO WATERWISE: Solo seco + Chuva intensa = Alto risco de enchente
  * 
  * AUTORES: [INSERIR NOMES E RMs DO SEU GRUPO AQUI]
  * DATA: Junho 2025
@@ -28,7 +30,7 @@
 #define LED_BUILTIN 2          // LED interno ESP32
 
 //----------------------------------------------------------
-// 🌐 CONFIGURAÇÕES DE REDE (ALTERE AQUI!)
+// 🌐 CONFIGURAÇÕES DE REDE (ALTERE AQUI SE NECESSÁRIO!)
 
 const char* SSID = "Wokwi-GUEST";        // Para Wokwi
 const char* PASSWORD = "";               // Para Wokwi
@@ -262,14 +264,20 @@ void initWiFi() {
     WiFi.begin(SSID, PASSWORD);
     Serial.printf("Conectando ao WiFi: %s", SSID);
     
-    while (WiFi.status() != WL_CONNECTED) {
+    int attempts = 0;
+    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         delay(1000);
         Serial.print(".");
+        attempts++;
     }
     
-    Serial.println("\n✅ WiFi Conectado!");
-    Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
-    Serial.printf("MAC: %s\n", WiFi.macAddress().c_str());
+    if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("\n✅ WiFi Conectado!");
+        Serial.printf("IP: %s\n", WiFi.localIP().toString().c_str());
+        Serial.printf("MAC: %s\n", WiFi.macAddress().c_str());
+    } else {
+        Serial.println("\n❌ WiFi não conectou - continuando offline");
+    }
 }
 
 //----------------------------------------------------------
@@ -280,8 +288,9 @@ void initMQTT() {
     
     Serial.printf("Conectando MQTT: %s:%d\n", MQTT_BROKER, MQTT_PORT);
     
-    // Tentar conectar uma vez (não ficar em loop)
-    if (mqtt.connect(FARM_ID, MQTT_USER, MQTT_PASSWORD)) {
+    String clientId = "WaterWise-" + String(random(0xffff), HEX);
+    
+    if (mqtt.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD)) {
         Serial.println("✅ MQTT Conectado!");
         
         // Publicar status online
@@ -289,7 +298,7 @@ void initMQTT() {
         mqtt.publish(TOPIC_STATUS, statusMsg.c_str());
         
     } else {
-        Serial.printf("⚠️ MQTT não conectou (código: %d) - Modo simulação apenas\n", mqtt.state());
+        Serial.printf("⚠️ MQTT não conectou (código: %d) - Modo offline\n", mqtt.state());
     }
 }
 

@@ -2,9 +2,9 @@
     {
         "id": "waterwise_tab",
         "type": "tab",
-        "label": "WaterWise - 3 Sensores FIXED",
+        "label": "WaterWise - 3 Sensores",
         "disabled": false,
-        "info": "Sistema de Prevenção a Enchentes - ERRO CORRIGIDO\n3 Sensores: DHT22 + Solo + Chuva\nGlobal Solution 2025 - FIAP"
+        "info": "Sistema de Prevenção a Enchentes\n3 Sensores: DHT22 + Solo + Chuva\nGlobal Solution 2025 - FIAP"
     },
     {
         "id": "mqtt_broker",
@@ -120,9 +120,9 @@
         "id": "split_outputs",
         "type": "function",
         "z": "waterwise_tab",
-        "name": "Distribuir Dados CORRIGIDO",
-        "func": "// Criar outputs separados para cada componente\nconst outputs = [];\n\n// Output 1: Temperatura\noutputs[0] = {payload: msg.temperature};\n\n// Output 2: Umidade\noutputs[1] = {payload: msg.humidity};\n\n// Output 3: Solo\noutputs[2] = {payload: msg.soil_moisture};\n\n// Output 4: Chuva\noutputs[3] = {payload: msg.rain_intensity};\n\n// Output 5: Risco\noutputs[4] = {payload: msg.risk_level};\n\n// Output 6: Descrição Risco\noutputs[5] = {payload: msg.risk_description};\n\n// Output 7: Recomendação\noutputs[6] = {payload: msg.recommendation};\n\n// Output 8: Alertas\nlet alerts = [];\nif (msg.flood_alert) alerts.push('🌊 ENCHENTE');\nif (msg.drought_alert) alerts.push('🏜️ SECA');\nif (msg.extreme_weather) alerts.push('🌡️ EXTREMO');\noutputs[7] = {payload: alerts.length > 0 ? alerts.join(' | ') : '✅ Nenhum alerta'};\n\n// Output 9: Info Sistema\nconst system_info = `Farm: ${msg.farm_id} | Equipe: ${msg.team_name} | IP: ${msg.ip} | Simulação: ${msg.simulation ? 'ATIVA' : 'OFF'}`;\noutputs[8] = {payload: system_info};\n\n// Output 10: Saúde Sistema\noutputs[9] = {payload: msg.system_health};\n\n// Output 11: Dados completos para gráfico (UM SÓ OUTPUT)\nconst chart_msg = {\n    payload: msg,\n    timestamp: msg.timestamp,\n    soil: msg.soil_moisture,\n    rain: msg.rain_intensity,\n    risk: msg.risk_level,\n    temperature: msg.temperature\n};\noutputs[10] = chart_msg;\n\nreturn outputs;",
-        "outputs": 11,
+        "name": "Distribuir Dados",
+        "func": "// Criar outputs separados para cada componente\nconst outputs = [];\n\n// Output 1: Temperatura\noutputs[0] = {payload: msg.temperature};\n\n// Output 2: Umidade\noutputs[1] = {payload: msg.humidity};\n\n// Output 3: Solo\noutputs[2] = {payload: msg.soil_moisture};\n\n// Output 4: Chuva\noutputs[3] = {payload: msg.rain_intensity};\n\n// Output 5: Risco\noutputs[4] = {payload: msg.risk_level};\n\n// Output 6: Descrição Risco\noutputs[5] = {payload: msg.risk_description};\n\n// Output 7: Recomendação\noutputs[6] = {payload: msg.recommendation};\n\n// Output 8: Alertas\nlet alerts = [];\nif (msg.flood_alert) alerts.push('🌊 ENCHENTE');\nif (msg.drought_alert) alerts.push('🏜️ SECA');\nif (msg.extreme_weather) alerts.push('🌡️ EXTREMO');\noutputs[7] = {payload: alerts.length > 0 ? alerts.join(' | ') : '✅ Nenhum alerta'};\n\n// Output 9: Info Sistema\nconst system_info = `Farm: ${msg.farm_id} | Equipe: ${msg.team_name} | IP: ${msg.ip} | Simulação: ${msg.simulation ? 'ATIVA' : 'OFF'}`;\noutputs[8] = {payload: system_info};\n\n// Output 10: Saúde Sistema\noutputs[9] = {payload: msg.system_health};\n\n// Output 11-14: Dados para gráfico\noutputs[10] = {payload: [{\"series\": \"Solo (%)\", \"x\": msg.timestamp, \"y\": msg.soil_moisture}]};\noutputs[11] = {payload: [{\"series\": \"Chuva (%)\", \"x\": msg.timestamp, \"y\": msg.rain_intensity}]};\noutputs[12] = {payload: [{\"series\": \"Risco (x10)\", \"x\": msg.timestamp, \"y\": msg.risk_level * 10}]};\noutputs[13] = {payload: [{\"series\": \"Temp (°C x2)\", \"x\": msg.timestamp, \"y\": msg.temperature * 2}]};\n\nreturn outputs;",
+        "outputs": 14,
         "timeout": 0,
         "noerr": 0,
         "initialize": "",
@@ -141,24 +141,6 @@
             ["text_alerts"],
             ["text_system_info"],
             ["gauge_system_health"],
-            ["prepare_chart_data"]
-        ]
-    },
-    {
-        "id": "prepare_chart_data",
-        "type": "function",
-        "z": "waterwise_tab",
-        "name": "Preparar Gráfico CORRIGIDO",
-        "func": "// Extrair dados\nconst timestamp = msg.timestamp;\nconst soil = msg.soil || 0;\nconst rain = msg.rain || 0;\nconst risk = msg.risk || 0;\nconst temp = msg.temperature || 0;\n\n// Criar mensagens separadas para cada série\nconst outputs = [];\n\n// Série 1: Solo\noutputs[0] = {\n    payload: {\n        \"series\": \"Solo (%)\",\n        \"x\": timestamp,\n        \"y\": soil\n    }\n};\n\n// Série 2: Chuva\noutputs[1] = {\n    payload: {\n        \"series\": \"Chuva (%)\",\n        \"x\": timestamp,\n        \"y\": rain\n    }\n};\n\n// Série 3: Risco (multiplicado por 10 para visualização)\noutputs[2] = {\n    payload: {\n        \"series\": \"Risco (x10)\",\n        \"x\": timestamp,\n        \"y\": risk * 10\n    }\n};\n\n// Série 4: Temperatura (multiplicado por 2 para visualização)\noutputs[3] = {\n    payload: {\n        \"series\": \"Temp (°C x2)\",\n        \"x\": timestamp,\n        \"y\": temp * 2\n    }\n};\n\nreturn outputs;",
-        "outputs": 4,
-        "timeout": 0,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 780,
-        "y": 560,
-        "wires": [
             ["chart_historical"],
             ["chart_historical"],
             ["chart_historical"],
@@ -340,7 +322,7 @@
         "id": "chart_historical",
         "type": "ui_chart",
         "z": "waterwise_tab",
-        "name": "Histórico CORRIGIDO",
+        "name": "Histórico",
         "group": "ui_group_chart",
         "order": 1,
         "width": 12,
@@ -356,7 +338,7 @@
         "ymax": "100",
         "removeOlder": 10,
         "removeOlderUnit": "60",
-        "x": 1020,
+        "x": 760,
         "y": 560,
         "wires": [[], []]
     },
