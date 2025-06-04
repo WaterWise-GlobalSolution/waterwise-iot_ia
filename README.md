@@ -153,6 +153,7 @@ Ctrl+Shift+P → "Wokwi: Start Simulator"
 
 ### **4. Configurar Node-RED**
 
+0 -Link nodered: http://172.208.54.189:1880
 1. Importar `nodered/flows.json`
 2. Configurar broker MQTT: `test.mosquitto.org`
 3. Deploy do fluxo
