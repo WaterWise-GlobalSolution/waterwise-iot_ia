@@ -11,11 +11,11 @@
 
 ## 👥 Equipe de Desenvolvimento - Turma 2TDSPS
 
-| Nome                   | RM     |
-|------------------------|--------|
-| Felipe Amador          | 553528 |
-| Leonardo de Oliveira   | 554024 |
-| Sara Sousa             | 552656 |
+| Nome                 | RM     |
+| -------------------- | ------ |
+| Felipe Amador        | 553528 |
+| Leonardo de Oliveira | 554024 |
+| Sara Sousa           | 552656 |
 
 ---
 
@@ -155,7 +155,7 @@ Ctrl+Shift+P → "Wokwi: Start Simulator"
 
 0 -Link nodered: http://172.208.54.189:1880
 1. Importar `nodered/flows.json`
-2. Configurar broker MQTT: `test.mosquitto.org`
+2. Configurar broker MQTT: `localhost`
 3. Deploy do fluxo
 4. Acessar dashboard: `http://localhost:1880/ui`
 
