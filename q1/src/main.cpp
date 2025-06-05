@@ -40,7 +40,7 @@ const char *PASSWORD = "";        // Para Wokwi
 //----------------------------------------------------------
 // 📡 CONFIGURAÇÕES MQTT (MQTT PÚBLICO PARA DEMONSTRAÇÃO)
 
-const char *MQTT_BROKER = "localhost"; // MQTT público
+const char *MQTT_BROKER = "test.mosquitto.org"; // MQTT público
 const int MQTT_PORT = 1883;
 const char *MQTT_USER = "";     // Sem usuário
 const char *MQTT_PASSWORD = ""; // Sem senha
