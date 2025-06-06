@@ -33,8 +33,8 @@
 //----------------------------------------------------------
 // 🌐 CONFIGURAÇÕES DE REDE
 
-const char *SSID = "Wokwi-GUEST"; // Para Wokwi
-const char *PASSWORD = "";        // Para Wokwi
+const char *SSID = "Wokwi-GUEST";
+const char *PASSWORD = "";    
 
 //----------------------------------------------------------
 // 🔗 CONFIGURAÇÕES API BACKEND (CONFIGURE SEU IP LOCAL)
@@ -42,13 +42,13 @@ const char *PASSWORD = "";        // Para Wokwi
 const char *API_BASE_URL = "http://192.168.0.202:5000/";
 const char *API_ENDPOINT_LEITURA = "/api/leituras";
 const char *API_ENDPOINT_ALERTA = "/api/alertas";
-const char *API_KEY = ""; // Não precisa de API key
+const char *API_KEY = ""; 
 
 //----------------------------------------------------------
 // 🏷️ IDENTIFICADORES WATERWISE FIAP
 
-const int SENSOR_ID = 1;           // ID do sensor no banco Oracle FIAP
-const int PRODUTOR_ID = 1;         // ID do produtor no banco
+const int SENSOR_ID = 1;      
+const int PRODUTOR_ID = 1;      
 const char *FARM_ID = "FARM_WaterWise_2025";
 const char *TEAM_NAME = "GRUPO_WATERWISE";
 const char *LOCATION = "SP_Zona_Rural";
@@ -192,7 +192,7 @@ void simulateRealisticData()
     sensors.temperature = constrain(sensors.temperature, -10, 50);
     sensors.airHumidity = constrain(sensors.airHumidity, 0, 100);
     
-    sensors.dhtStatus = true; // Simular DHT funcionando
+    sensors.dhtStatus = true; 
 }
 
 //----------------------------------------------------------
@@ -356,8 +356,8 @@ void readAllSensors()
 
         if (!sensors.dhtStatus)
         {
-            sensors.temperature = 25.0 + random(-3, 3);   // Valor simulado
-            sensors.airHumidity = 60.0 + random(-10, 10); // Valor simulado
+            sensors.temperature = 25.0 + random(-3, 3);   
+            sensors.airHumidity = 60.0 + random(-10, 10);
         }
 
         // 🌱 SENSOR 2: Umidade do Solo
@@ -419,8 +419,7 @@ void readAllSensors()
 
     // Análise de risco
     FloodRiskAnalysis risk = analyzeFloodRisk();
-    Serial.printf("🧮 Risco: %d/10 - %s\n",
-                  risk.riskLevel, risk.riskDescription.c_str());
+    Serial.printf("🧮 Risco: %d/10 - %s\n",risk.riskLevel, risk.riskDescription.c_str());
 
     if (risk.floodAlert)
     {
@@ -451,7 +450,7 @@ bool sendSensorDataToDatabase()
     sensorData["umidade_solo"] = round(sensors.soilMoisturePercent * 100) / 100.0;
     sensorData["temperatura_ar"] = round(sensors.temperature * 100) / 100.0;
     sensorData["precipitacao_mm"] = round(sensors.rainIntensity * 100) / 100.0;
-    sensorData["timestamp"] = "CURRENT_TIMESTAMP"; // O banco irá usar a timestamp atual
+    sensorData["timestamp"] = "CURRENT_TIMESTAMP"; 
     sensorData["farm_id"] = FARM_ID;
     sensorData["team_name"] = TEAM_NAME;
 
@@ -501,7 +500,7 @@ bool sendAlertToDatabase(FloodRiskAnalysis risk)
     // Só enviar se houver alerta ativo
     if (!risk.floodAlert && !risk.droughtAlert && !risk.extremeWeatherAlert)
     {
-        return true; // Não é erro, apenas não há alerta
+        return true; 
     }
 
     // Limpar documento JSON
@@ -509,7 +508,7 @@ bool sendAlertToDatabase(FloodRiskAnalysis risk)
     
     // Criar JSON para alerta
     alertData["id_produtor"] = PRODUTOR_ID;
-    alertData["id_leitura"] = "LAST_INSERT_ID()"; // Usar a última leitura inserida
+    alertData["id_leitura"] = "LAST_INSERT_ID()"; 
     alertData["codigo_severidade"] = risk.severityCode;
     alertData["descricao_alerta"] = risk.riskDescription + " - " + risk.recommendation;
     alertData["timestamp"] = "CURRENT_TIMESTAMP";
