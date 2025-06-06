@@ -202,9 +202,9 @@ Ctrl+Shift+P → "Wokwi: Start Simulator"
 
 <div align="center">
 
-### 🌊 **WaterWise - Tecnologia a Serviço da Vida** 🌊
-
-*"Prevenindo enchentes através da inteligência artificial e Internet das Coisas"*
+---
+  
+## 💧 <strong>WaterWise: Cada Gota Importa, Cada Metro Conta</strong><br>
 
 ---
 
