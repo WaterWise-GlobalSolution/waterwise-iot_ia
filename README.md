@@ -82,7 +82,7 @@ Onde:
 
 ### **Software & Plataformas**
 - **C++/Arduino** - Programação do ESP32
-- **Node-RED** - Dashboard e visualização
+- **Python Streamlit** - Dashboard e visualização
 - **MQTT** - Protocolo de comunicação IoT
 - **JSON** - Formato de dados estruturados
 - **PlatformIO** - Environment de desenvolvimento
@@ -122,7 +122,7 @@ WaterWise/
 - Visual Studio Code
 - Extensão PlatformIO IDE
 - Extensão Wokwi (com licença)
-- Node-RED (local ou servidor FIAP)
+- Python - Streamlit - Interface
 
 ### **1. Configuração do Ambiente**
 
@@ -146,18 +146,6 @@ const char* LOCATION = "SP_Sua_Localizacao";
 
 ### **3. Executar Simulação**
 
-```bash
-# No VS Code:
-Ctrl+Shift+P → "Wokwi: Start Simulator"
-```
-
-### **4. Configurar Node-RED**
-
-0 -Link nodered: http://172.208.54.189:1880
-1. Importar `nodered/flows.json`
-2. Configurar broker MQTT: `localhost`
-3. Deploy do fluxo
-4. Acessar dashboard: `http://localhost:1880/ui`
 
 ---
 
@@ -193,7 +181,7 @@ Ctrl+Shift+P → "Wokwi: Start Simulator"
 - ✅ Dashboard responsivo
 
 ### **Testes de Integração**
-- ✅ ESP32 ↔ MQTT ↔ Node-RED
+- ✅ ESP32 ↔ MQTT ↔ API ↔ BANCO DE DADOS ORACLE
 - ✅ Simulação automática de dados
 - ✅ Alertas em tempo real
 
